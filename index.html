@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>패턴 잠금 페이지</title>
+    <style>
+    @font-face {
+        font-family: 'Nexon';
+        src: url('NEXONLv1GothicRegular.ttf') format('truetype');
+    }
+    @font-face {
+    font-family: 'KoPubWorld';
+    src: url('KoPubWorldBatangMedium.ttf') format('truetype');
+    }
+    body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f0f0;
+    }
+    .pattern-lock {
+        display: grid;
+        grid-template-columns: repeat(3, 50px);
+        grid-gap: 10px;
+        position: relative;
+    }
+    .dot {
+        width: 50px;
+        height: 50px;
+        background-color: #fff;
+        border: 2px solid #333;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;  /* Allows the inner circle to be fully contained */
+    }
+    .dot::before {  /* Inner dot */
+        content: "";
+        width: 20px;
+        height: 20px;
+        background-color: #333;
+        border-radius: 50%;
+        position: absolute;
+    }
+    .line {
+        position: absolute;
+        height: 2px;
+        background-color: #333;
+        pointer-events: none;  /* Prevents line from interfering with dot interactions */
+    }
+    .active::before {
+        background-color: rgb(29, 29, 63);
+    }
+    #audioControls {
+        display: none;
+        margin-top: 20px;
+    }
+    #message {
+        display: none;
+        margin-top: 20px;
+    }
+    .custom-font {
+        font-family: 'KoPubWorld', sans-serif; /* Only for the specific character */
+        font-weight: 500;
+    }
+
+    .hidden {
+        display: none;
+    }
+    </style>
+</head>
+<body>
+    <div class="pattern-lock">
+        <div class="dot" data-number="1"></div>
+        <div class="dot" data-number="2"></div>
+        <div class="dot" data-number="3"></div>
+        <div class="dot" data-number="4"></div>
+        <div class="dot" data-number="5"></div>
+        <div class="dot" data-number="6"></div>
+        <div class="dot" data-number="7"></div>
+        <div class="dot" data-number="8"></div>
+        <div class="dot" data-number="9"></div>
+    </div>
+    <div id="audioControls">
+        <audio id="audioPlayer" controls>
+            <source src="audio-file.mp3" type="audio/mp3">
+            Your browser does not support the audio element.
+        </audio>
+        <div id="message" style="font-family: 'Nexon', sans-serif;">
+            이 문제는 보너스 문제입니다.<br>
+            세 팀 중 한 팀만 해당 문제를 풀 수 있고,<br>
+            지금까지 일곱 문제와 다르게 이번 문제를 푼 팀<span class="custom-font">에</span>게는<br>
+            기록 2분 단축의 보너<span class="custom-font">스</span>가 주어집니다.<br>
+            힌트는 사용 불가능하고,<br>
+            문제의 답을 정문 자물쇠에 입력해<br>
+            밖으로 나가 최종 문제를 해결하시면 됩니다.<br>
+            다른 팀이 오기 전에 최대한 빨리 해결하시는 것을 추천드립니다.
+        </div>
+    </div>
+
+    <script>
+
+    const correctPattern = [7, 4, 5, 6, 2, 8, 9];
+    let inputPattern = [];
+    let isDragging = false;
+    let lastX, lastY;
+    let isPatternSolved = false;
+
+    const dots = document.querySelectorAll('.dot');
+    const patternLock = document.querySelector('.pattern-lock');
+
+    dots.forEach(dot => {
+        dot.addEventListener('mousedown', startDrag);
+        dot.addEventListener('touchstart', startDrag);
+        dot.addEventListener('mouseenter', dragEnter);
+        dot.addEventListener('touchmove', dragMove);
+    });
+
+    document.addEventListener('mouseup', endDrag);
+    document.addEventListener('touchend', endDrag);
+
+    function startDrag(event) {
+        if (isPatternSolved) return;
+        isDragging = true;
+        inputPattern = [];
+        dots.forEach(d => d.classList.remove('active'));
+        const number = parseInt(event.target.getAttribute('data-number'));
+        inputPattern.push(number);
+        event.target.classList.add('active');
+        lastX = event.target.offsetLeft + event.target.offsetWidth / 2;
+        lastY = event.target.offsetTop + event.target.offsetHeight / 2;
+    }
+
+    function dragEnter(event) {
+        if (isPatternSolved) return;
+        if (isDragging) {
+            const number = parseInt(event.target.getAttribute('data-number'));
+            if (!inputPattern.includes(number)) {
+                inputPattern.push(number);
+                event.target.classList.add('active');
+                drawLine(event.target);
+            }
+        }
+    }
+
+    function dragMove(event) {
+        if (isPatternSolved) return;
+        event.preventDefault();
+        const touch = event.touches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (target && target.classList.contains('dot')) {
+            dragEnter({ target });
+       }
+    }
+
+    function drawLine(target) {
+        const x = target.offsetLeft + target.offsetWidth / 2;
+        const y = target.offsetTop + target.offsetHeight / 2;
+        const line = document.createElement('div');
+        line.className = 'line';
+        line.style.width = `${Math.sqrt((x - lastX) ** 2 + (y - lastY) ** 2)}px`;
+        line.style.transform = `rotate(${Math.atan2(y - lastY, x - lastX) * 180 / Math.PI}deg)`;
+        line.style.transformOrigin = '0 0';
+        line.style.left = `${lastX}px`;
+        line.style.top = `${lastY}px`;
+        patternLock.appendChild(line);
+        lastX = x;
+        lastY = y;
+    }
+
+    function endDrag() {
+        if (isPatternSolved) return;
+        isDragging = false;
+        if (inputPattern.length === correctPattern.length && JSON.stringify(inputPattern) === JSON.stringify(correctPattern)) {
+            alert('패턴이 맞습니다! 음성 파일을 재생할 수 있습니다.');
+            document.getElementById('audioControls').style.display = 'block';
+            document.getElementById('message').style.display = 'block';//메세지 출력
+            document.querySelectorAll('.dot').forEach(dot => dot.classList.add('hidden')); // 점들을 숨깁니다
+            isPatternSolved = true;
+        } else if (!isPatternSolved) {
+            alert('패턴이 틀립니다. 다시 시도하세요.');
+        }
+        inputPattern = [];
+        document.querySelectorAll('.line').forEach(line => line.remove());  // Clear lines after drag ends
+    }
+    </script>
+</body>
+</html>
